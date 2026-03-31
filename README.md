@@ -1,5 +1,5 @@
-**App Concept: Emotion-Enhanced Learning During Music Listening**  
-**Working Title:** VibeWise AI (or similar) – Delivers useful, bite-sized knowledge on topics like AI, framed to feel natural with the current song's emotional tone.
+**Music-Enhanced Serendipitous Learning**  
+**Working Title:** VibeWise AI – Delivers useful, bite-sized knowledge on topics like AI, framed to feel natural with the current song's emotional tone.
 
 ### Core Idea
 The app detects the emotional character of the song the user is listening to (via music signals and lyrics) and delivers short, **genuinely useful information** on a chosen topic (starting with AI).  
