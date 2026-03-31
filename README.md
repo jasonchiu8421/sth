@@ -16,7 +16,7 @@ Goal: Create occasional “that landed well” moments of serendipitous learning
 - **Respect the music**: Music remains primary. Insights are optional, subtle, non-intrusive, and user-controllable.
 - **Balanced emotional approach**: Emotion enhances comfort and short-term processing (supported by emotional congruence research), but does not override truth or depth.
 
-### Emotion Detection Approach (2026 Reality)
+### Emotion Detection Approach
 Spotify’s classic **Audio Features** endpoint (valence, energy, tempo, danceability, etc.) has been largely deprecated or restricted for new apps as of early 2026. Alternatives include:
 - Lyrics-based analysis with modern LLMs for sentiment and emotional nuance (stronger now).
 - Hybrid methods: Available metadata + playlist context + user listening history.
