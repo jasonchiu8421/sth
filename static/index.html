@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MoodSpark AI 🎵</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #0f0f1e;
+            color: #e0e0ff;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        h1 { color: #a78bfa; text-align: center; margin-bottom: 8px; }
+
+        /* ---- INIT PAGE ---- */
+        #init-page { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; max-width: 400px; padding: 24px; }
+
+        #init-page p { color: #a0a0cc; text-align: center; font-size: 0.95rem; }
+
+        #username-input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 2px solid #6366f1;
+            background: #1e1e38;
+            color: #e0e0ff;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+        }
+        #username-input::placeholder { color: #555577; }
+        #username-input:focus { border-color: #a78bfa; }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            background: #6366f1;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary:hover { background: #4f46e5; }
+
+        .error-msg { color: #f87171; font-size: 0.875rem; }
+        .success-msg { color: #34d399; font-size: 0.875rem; }
+
+        /* ---- MAIN PAGE ---- */
+        #main-page { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 560px; padding: 16px; }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: 2px solid #444466;
+            border-radius: 10px;
+            color: #e0e0ff;
+            font-size: 1.1rem;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .btn-icon:hover { border-color: #f87171; }
+
+        /* ---- CARD AREA ---- */
+        .container {
+            width: 100%;
+            max-width: 520px;
+            height: 500px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            background: #1e1e38;
+            border-radius: 20px;
+            border: 2px solid #6366f1;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.25);
+            padding: 32px 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 1.25rem;
+            line-height: 1.5;
+            position: absolute;
+            top: 0; left: 0;
+            transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: grab;
+            user-select: none;
+        }
+
+        .short-text { font-weight: 600; transition: opacity 0.3s ease; }
+        .card.expanded .short-text { opacity: 0.3; }
+
+        .long-text {
+            margin-top: 28px;
+            font-size: 1.05rem;
+            line-height: 1.45;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.5s ease;
+        }
+        .card.expanded .long-text { opacity: 1; max-height: 280px; }
+
+        .hint {
+            margin-top: 12px;
+            color: #666;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        footer {
+            margin-top: 24px;
+            color: #555577;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ====================== INIT PAGE ====================== -->
+    <div id="init-page">
+        <h1>🎵 MoodSpark AI</h1>
+        <p>Detects the emotional tone of your music and delivers meaningful AI insights.</p>
+        <input id="username-input" type="text" placeholder="e.g. loymathm" autocomplete="off" />
+        <div id="init-msg"></div>
+        <button class="btn-primary" id="connect-btn">Connect to Last.fm</button>
+    </div>
+
+    <!-- ====================== MAIN PAGE ====================== -->
+    <div id="main-page">
+        <div class="top-bar">
+            <h1>🎵 MoodSpark AI</h1>
+            <button class="btn-icon" id="disconnect-btn" title="Disconnect & restart">❌</button>
+        </div>
+
+        <div class="container" id="container">
+            <div id="card1" class="card"></div>
+            <div id="card2" class="card" style="transform: translateX(100%);"></div>
+        </div>
+        <div class="hint">← Swipe left (next) &nbsp;•&nbsp; Swipe right (previous) →</div>
+
+        <footer>Listen. Feel. Learn.</footer>
+    </div>
+
+    <script>
+        // ====================== SESSION ======================
+        const initPage = document.getElementById('init-page');
+        const mainPage = document.getElementById('main-page');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const usernameInput = document.getElementById('username-input');
+        const initMsg = document.getElementById('init-msg');
+
+        function showInit() {
+            initPage.style.display = 'flex';
+            mainPage.style.display = 'none';
+        }
+
+        function showMain() {
+            initPage.style.display = 'none';
+            mainPage.style.display = 'flex';
+        }
+
+        if (localStorage.getItem('lastfm_username')) {
+            showMain();
+            initCards();
+        } else {
+            showInit();
+        }
+
+        connectBtn.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (!username) {
+                initMsg.className = 'error-msg';
+                initMsg.textContent = 'Please enter a Last.fm username';
+                return;
+            }
+            localStorage.setItem('lastfm_username', username);
+            initMsg.className = 'success-msg';
+            initMsg.textContent = `✅ Connected as ${username}`;
+            setTimeout(() => {
+                showMain();
+                initCards();
+            }, 600);
+        });
+
+        disconnectBtn.addEventListener('click', () => {
+            localStorage.removeItem('lastfm_username');
+            usernameInput.value = '';
+            initMsg.textContent = '';
+            showInit();
+        });
+
+        // ====================== CARDS ======================
+        let currentIndex = 0;
+        let insights = [];
+
+        const card1 = document.getElementById('card1');
+        const card2 = document.getElementById('card2');
+        const container = document.getElementById('container');
+
+        let startX = 0, isDragging = false, velocity = 0, lastX = 0, lastTime = 0;
+        let currentMood = null;
+
+        async function initCards() {
+            try {
+                const res = await fetch('/insights');
+                insights = await res.json();
+            } catch (e) {
+                insights = [{ short: 'Could not load insights', long: 'Make sure the server is running.' }];
+            }
+            currentIndex = 0;
+            loadCard(card1, currentIndex);
+            loadCard(card2, (currentIndex + 1) % insights.length);
+            card2.style.transform = 'translateX(100%)';
+
+            fetchCurrentMood();
+            setInterval(fetchCurrentMood, 30000);
+        }
+
+        function loadCard(card, index) {
+            if (!card.querySelector('.short-text')) {
+                card.innerHTML = `<div class="short-text"></div><div class="long-text"></div>`;
+            }
+            card.querySelector('.short-text').textContent = insights[index].short;
+            card.querySelector('.long-text').textContent = insights[index].long;
+            card.classList.remove('expanded');
+        }
+
+        function animateCard(card, x, duration = 500) {
+            card.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+            card.style.transform = `translateX(${x}px)`;
+        }
+
+        function goToNext() {
+            const total = insights.length;
+            animateCard(card1, -window.innerWidth * 1.1, 450);
+            card2.style.transition = 'none';
+            card2.style.transform = `translateX(${window.innerWidth * 1.1}px)`;
+            loadCard(card2, (currentIndex + 1) % total);
+
+            setTimeout(() => animateCard(card2, 0, 450), 10);
+            setTimeout(() => {
+                currentIndex = (currentIndex + 1) % total;
+                loadCard(card1, currentIndex);
+                card1.style.transition = 'none';
+                card1.style.transform = 'translateX(0)';
+                card2.style.transition = 'none';
+                card2.style.transform = 'translateX(100%)';
+            }, 460);
+        }
+
+        function goToPrev() {
+            const total = insights.length;
+            animateCard(card1, window.innerWidth * 1.1, 450);
+            card2.style.transition = 'none';
+            card2.style.transform = `translateX(${-window.innerWidth * 1.1}px)`;
+            loadCard(card2, (currentIndex - 1 + total) % total);
+
+            setTimeout(() => animateCard(card2, 0, 450), 10);
+            setTimeout(() => {
+                currentIndex = (currentIndex - 1 + total) % total;
+                loadCard(card1, currentIndex);
+                card1.style.transition = 'none';
+                card1.style.transform = 'translateX(0)';
+                card2.style.transition = 'none';
+                card2.style.transform = 'translateX(-100%)';
+            }, 460);
+        }
+
+        function startDrag(e) {
+            isDragging = true;
+            startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            lastX = startX;
+            lastTime = Date.now();
+            card1.style.transition = 'none';
+        }
+
+        function duringDrag(e) {
+            if (!isDragging) return;
+            const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            const diff = clientX - startX;
+            card1.style.transform = `translateX(${diff}px)`;
+            const now = Date.now();
+            velocity = (clientX - lastX) / (now - lastTime + 1);
+            lastX = clientX;
+            lastTime = now;
+        }
+
+        function endDrag(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            const clientX = e.type.includes('mouse') ? e.clientX :
+                            (e.changedTouches ? e.changedTouches[0].clientX : startX);
+            const diffX = clientX - startX;
+            const absDiffX = Math.abs(diffX);
+
+            if (absDiffX < 8) { toggleExpand(); return; }
+
+            if (absDiffX > 100 || Math.abs(velocity) > 0.7) {
+                if (diffX < 0) goToNext();
+                else goToPrev();
+            } else {
+                animateCard(card1, 0, 280);
+            }
+        }
+
+        function toggleExpand() {
+            let tx = 0;
+            const match = card1.style.transform.match(/-?[\d.]+/);
+            if (match) tx = parseFloat(match[0]);
+            if (Math.abs(tx) < 30) card1.classList.toggle('expanded');
+        }
+
+        container.addEventListener('mousedown', startDrag);
+        window.addEventListener('mousemove', duringDrag);
+        window.addEventListener('mouseup', endDrag);
+        container.addEventListener('touchstart', startDrag, { passive: false });
+        container.addEventListener('touchmove', duringDrag, { passive: false });
+        container.addEventListener('touchend', endDrag);
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowRight') goToNext();
+            if (e.key === 'ArrowLeft') goToPrev();
+        });
+
+        // ====================== MOOD POLLING ======================
+        async function fetchCurrentMood() {
+            try {
+                const res = await fetch('/mood');
+                if (!res.ok) return;
+                const moodData = await res.json();
+                if (moodData.mood && moodData.mood !== currentMood) {
+                    currentMood = moodData.mood;
+                    preloadNextMood(moodData);
+                }
+            } catch (err) {
+                console.log('Mood fetch error:', err);
+            }
+        }
+
+        function preloadNextMood(moodData) {
+            if (insights.length === 0) return;
+            card2.innerHTML = `<div class="short-text"></div><div class="long-text"></div>`;
+            card2.querySelector('.short-text').textContent =
+                `🎧 ${moodData.track || 'Unknown'} — ${moodData.artist || 'Unknown'}`;
+            card2.querySelector('.long-text').textContent =
+                `Vibe: ${moodData.mood} • ${moodData.timestamp || ''}`;
+        }
+    </script>
+</body>
+</html>
