@@ -10,6 +10,56 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# ====================== PLACEHOLDER FUNCTIONS ======================
+def get_current_mood():
+    """TODO: Implement real Last.fm call here later"""
+    # Placeholder for now - replace with actual Last.fm API logic
+    return {
+        "track": "Blinding Lights",
+        "artist": "The Weeknd",
+        "mood": "Energetic",
+        "timestamp": "just now"
+    }
+
+def fetch_ai_insight(current_mood="calm"):
+    calm_insights = [
+        {
+            "short": "calm",
+            "long": "calm..."
+        }
+    ]
+
+    intense_insights = [
+        {
+            "short": "intense",
+            "long": "intense..."
+        }
+    ]
+
+    uplifting_insights = [
+        {
+            "short": "uplifting",
+            "long": "uplifting..."
+        }
+    ]
+
+    introspective_insights = [
+        {
+            
+        }
+    ]
+    return random.choice(templates)
+
+# ====================== MOOD API ENDPOINT (for background JS fetch) ======================
+query_params = st.query_params
+if "_get_mood" in query_params or st.query_params.get("_get_mood") is not None:
+    try:
+        mood_data = get_current_mood()
+        st.json(mood_data)
+    except Exception as e:
+        st.json({"error": str(e)})
+    st.stop()  # Stop normal page rendering
+
 st.markdown("""
     <style>
         .stApp { background-color: #0f0f1e; color: #e0e0ff; }
@@ -17,28 +67,6 @@ st.markdown("""
         .stButton > button { border-radius: 12px; height: 52px; font-weight: 600; }
     </style>
 """, unsafe_allow_html=True)
-
-# ====================== AI INSIGHT FETCH FUNCTION ======================
-def fetch_ai_insight():
-    templates = [
-        {
-            "short": "That driving energy mirrors how transformers unlocked explosive progress in AI, turning massive datasets into breakthrough capabilities almost overnight.",
-            "long": "The self-attention mechanism in transformers processes entire sequences in parallel — the key innovation that made modern large language models possible."
-        },
-        {
-            "short": "The raw intensity of this track echoes the high-stakes disruption AI is causing across industries — and the ethical tensions that come with it.",
-            "long": "Rapid AI adoption is already reshaping jobs and power structures; the real question is whether we can guide that disruption responsibly."
-        },
-        {
-            "short": "In this calm moment, it's clear how AI is quietly becoming part of everyday applications.",
-            "long": "Balanced progress means focusing on human-AI collaboration, making tools that genuinely augment our daily lives."
-        },
-        {
-            "short": "In quieter moments like this, it's worth reflecting on the limitations and philosophical questions AI raises about creativity.",
-            "long": "Current models still lack true understanding — keep human judgment at the center."
-        }
-    ]
-    return random.choice(templates)
 
 # ====================== SESSION STATE ======================
 if "page" not in st.session_state:
@@ -103,15 +131,15 @@ else:
             
             .container {{
                 width: 100%;
-                max-width: 520px;        /* Increased from 460px - feels better */
-                height: 500px;           /* Slightly taller for comfort */
+                max-width: 520px;
+                height: 500px;
                 margin: 0 auto;
                 position: relative;
                 overflow: hidden;
             }}
 
             .card {{
-                width: 100%;             /* This is the key fix */
+                width: 100%;
                 height: 100%;
                 background: #1e1e38;
                 border-radius: 20px;
@@ -132,7 +160,7 @@ else:
                 transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
                 cursor: grab;
                 user-select: none;
-                box-sizing: border-box;   /* Important: prevents padding from increasing width */
+                box-sizing: border-box;
             }}
             .short-text {{ 
                 transition: opacity 0.3s ease; 
@@ -157,7 +185,6 @@ else:
     </head>
     <body>
         <div class="container" id="container">
-            <!-- Two cards for smooth sliding transition -->
             <div id="card1" class="card"></div>
             <div id="card2" class="card" style="transform: translateX(100%);"></div>
         </div>
@@ -167,23 +194,27 @@ else:
 
         <script>
             let currentIndex = 0;
-            const insights = {insights_json};
+            let insights = {insights_json};   // static AI insights
             const total = insights.length;
             
             const card1 = document.getElementById('card1');
             const card2 = document.getElementById('card2');
-            
+            const container = document.getElementById('container');
+
             let startX = 0;
+            let startY = 0;
             let isDragging = false;
             let velocity = 0;
             let lastX = 0;
             let lastTime = 0;
 
             function loadCard(card, index) {{
-                card.querySelector('.short-text') ? null : card.innerHTML = `
-                    <div class="short-text"></div>
-                    <div class="long-text"></div>
-                `;
+                if (!card.querySelector('.short-text')) {{
+                    card.innerHTML = `
+                        <div class="short-text"></div>
+                        <div class="long-text"></div>
+                    `;
+                }}
                 card.querySelector('.short-text').textContent = insights[index].short;
                 card.querySelector('.long-text').textContent = insights[index].long;
                 card.classList.remove('expanded');
@@ -195,66 +226,49 @@ else:
             }}
 
             function goToNext() {{
-                // Current card (card1) slides out to the left
                 animateCard(card1, -window.innerWidth * 1.1, 450);
-                
-                // Next card (card2) starts from the right and slides in
                 card2.style.transition = 'none';
                 card2.style.transform = `translateX(${{window.innerWidth * 1.1}}px)`;
                 loadCard(card2, (currentIndex + 1) % total);
                 
-                // Trigger slide in
-                setTimeout(() => {{
-                    animateCard(card2, 0, 450);
-                }}, 10);
+                setTimeout(() => animateCard(card2, 0, 450), 10);
 
-                // After animation, swap roles
                 setTimeout(() => {{
                     currentIndex = (currentIndex + 1) % total;
-                    
-                    // Make card2 the new main card (card1)
-                    card1.innerHTML = card2.innerHTML;
+                    loadCard(card1, currentIndex);
                     card1.style.transition = 'none';
                     card1.style.transform = 'translateX(0)';
-                    
-                    // Reset card2 to be ready for next slide (off to the right)
                     card2.style.transition = 'none';
                     card2.style.transform = `translateX(100%)`;
                 }}, 460);
             }}
 
             function goToPrev() {{
-                // Current card (card1) slides out to the right
                 animateCard(card1, window.innerWidth * 1.1, 450);
-                
-                // Previous card (card2) starts from the left and slides in
                 card2.style.transition = 'none';
                 card2.style.transform = `translateX(${{-window.innerWidth * 1.1}}px)`;
                 loadCard(card2, (currentIndex - 1 + total) % total);
                 
-                setTimeout(() => {{
-                    animateCard(card2, 0, 450);
-                }}, 10);
+                setTimeout(() => animateCard(card2, 0, 450), 10);
 
                 setTimeout(() => {{
                     currentIndex = (currentIndex - 1 + total) % total;
-                    
-                    card1.innerHTML = card2.innerHTML;
+                    loadCard(card1, currentIndex);
                     card1.style.transition = 'none';
                     card1.style.transform = 'translateX(0)';
-                    
                     card2.style.transition = 'none';
                     card2.style.transform = `translateX(-100%)`;
                 }}, 460);
             }}
 
-            // Mouse + Touch Events (applied to container for better UX)
-            const container = document.getElementById('container');
-            
             function startDrag(e) {{
                 isDragging = true;
-                startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-                lastX = startX;
+                const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+                const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+                
+                startX = clientX;
+                startY = clientY;
+                lastX = clientX;
                 lastTime = Date.now();
                 card1.style.transition = 'none';
             }}
@@ -275,19 +289,71 @@ else:
                 if (!isDragging) return;
                 isDragging = false;
                 
-                const clientX = e.type.includes('mouse') ? e.clientX : (e.changedTouches ? e.changedTouches[0].clientX : startX);
-                const diff = clientX - startX;
-                const absDiff = Math.abs(diff);
+                const clientX = e.type.includes('mouse') ? e.clientX : 
+                                (e.changedTouches ? e.changedTouches[0].clientX : startX);
+                const clientY = e.type.includes('mouse') ? e.clientY : 
+                                (e.changedTouches ? e.changedTouches[0].clientY : startY);
                 
-                if (absDiff > 100 || Math.abs(velocity) > 0.7) {{
-                    if (diff < 0) {{
-                        goToNext();   // Swipe Left → Next
-                    }} else {{
-                        goToPrev();   // Swipe Right → Previous
-                    }}
+                const diffX = clientX - startX;
+                const diffY = clientY - startY;
+                const absDiffX = Math.abs(diffX);
+
+                if (Math.abs(diffY) > 30 || absDiffX < 8) {{
+                    toggleExpand();
+                    return;
+                }}
+
+                if (absDiffX > 100 || Math.abs(velocity) > 0.7) {{
+                    if (diffX < 0) goToNext();
+                    else goToPrev();
                 }} else {{
-                    // Snap back
                     animateCard(card1, 0, 280);
+                }}
+            }}
+
+            function toggleExpand() {{
+                const visibleCard = card1;
+                let tx = 0;
+                if (visibleCard.style.transform) {{
+                    const match = visibleCard.style.transform.match(/-?[\\d.]+/);
+                    tx = match ? parseFloat(match[0]) : 0;
+                }}
+                if (Math.abs(tx) < 30) {{
+                    visibleCard.classList.toggle('expanded');
+                }}
+            }}
+
+            // ====================== BACKGROUND MOOD UPDATER ======================
+            let currentMood = null;
+
+            async function fetchCurrentMood() {{
+                try {{
+                    const res = await fetch(window.location.origin + "/_get_mood");
+                    if (res.ok) {{
+                        const newMood = await res.json();
+                        if (JSON.stringify(newMood) !== JSON.stringify(currentMood)) {{
+                            currentMood = newMood;
+                            updateLiveMood();
+                        }}
+                    }}
+                }} catch (err) {{
+                    console.log("Mood fetch error (will retry):", err);
+                }}
+            }}
+
+            function updateLiveMood() {{
+                if (!currentMood) return;
+                
+                const liveShort = `🎧 Now: ${{currentMood.track || "Unknown"}} — ${{currentMood.artist || "Unknown"}}`;
+                const liveLong = `Vibe: ${{currentMood.mood || "Chill"}} • ${{currentMood.timestamp || ""}}`;
+
+                // Update the currently visible card if it's the first one (live mood slot)
+                // Or always update card at index 0
+                if (currentIndex === 0) {{
+                    const shortEl = card1.querySelector('.short-text');
+                    const longEl = card1.querySelector('.long-text');
+                    if (shortEl) shortEl.textContent = liveShort;
+                    if (longEl) longEl.textContent = liveLong;
                 }}
             }}
 
@@ -296,38 +362,29 @@ else:
             window.addEventListener('mousemove', duringDrag);
             window.addEventListener('mouseup', endDrag);
 
-            container.addEventListener('touchstart', startDrag, {{ passive: false }});
-            container.addEventListener('touchmove', duringDrag, {{ passive: false }});
+            container.addEventListener('touchstart', startDrag, {{passive: false}});
+            container.addEventListener('touchmove', duringDrag, {{passive: false}});
             container.addEventListener('touchend', endDrag);
 
-            // Click to expand on the visible card
-            function toggleExpand() {{
-                const visibleCard = card1;
-                if (Math.abs(parseFloat(visibleCard.style.transform.replace('translateX(', '').replace('px)', '')) || 0) < 30) {{
-                    visibleCard.classList.toggle('expanded');
-                }}
-            }}
-            
-            card1.addEventListener('click', toggleExpand);
-            card2.addEventListener('click', toggleExpand);  // in case it's partially visible
-
-            // Keyboard support
             document.addEventListener('keydown', e => {{
                 if (e.key === 'ArrowRight') goToNext();
                 if (e.key === 'ArrowLeft') goToPrev();
             }});
 
-            // Initialize - load first card
+            // Initialize cards
             loadCard(card1, currentIndex);
-            // Pre-load second card off-screen (for next)
             loadCard(card2, (currentIndex + 1) % total);
             card2.style.transform = 'translateX(100%)';
+
+            // Start silent background polling every 30 seconds
+            setInterval(fetchCurrentMood, 30000);
+            fetchCurrentMood(); // initial fetch
         </script>
     </body>
     </html>
     """
 
-    st.components.v1.html(html_code, height=540, scrolling=False)
+    st.components.v1.html(html_code, height=560, scrolling=False)
 
     st.markdown("### ")
     c1, c2, c3 = st.columns(3)
