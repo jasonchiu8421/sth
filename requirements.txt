@@ -1,1 +1,4 @@
 pylast
+fastapi
+uvicorn[standard]
+requests
