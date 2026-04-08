@@ -229,18 +229,14 @@
         let currentMood = null;
 
         async function initCards() {
-            try {
-                const res = await fetch('/insights');
-                insights = await res.json();
-            } catch (e) {
-                insights = [{ short: 'Could not load insights', long: 'Make sure the server is running.' }];
-            }
+            await fetchCurrentMood();           // ← First get the mood
+            await loadInsights();               // ← Then load insights with mood
             currentIndex = 0;
             loadCard(card1, currentIndex);
             loadCard(card2, (currentIndex + 1) % insights.length);
             card2.style.transform = 'translateX(100%)';
-
-            fetchCurrentMood();
+            
+            // Continue polling mood (and refresh insights when mood changes)
             setInterval(fetchCurrentMood, 30000);
         }
 
@@ -260,41 +256,74 @@
 
         function goToNext() {
             const total = insights.length;
+            if (total <= 1) return;
+
+            // Force collapse immediately and ensure layout updates before animation
+            card1.classList.remove('expanded');
+            
+            // Force a reflow so the collapse happens instantly before the swipe starts
+            void card1.offsetHeight;
+
             animateCard(card1, -window.innerWidth * 1.1, 450);
+
             card2.style.transition = 'none';
             card2.style.transform = `translateX(${window.innerWidth * 1.1}px)`;
+            
+            // Load the next card in collapsed state
             loadCard(card2, (currentIndex + 1) % total);
 
-            setTimeout(() => animateCard(card2, 0, 450), 10);
+            setTimeout(() => {
+                animateCard(card2, 0, 450);
+            }, 20);   // slightly longer delay for safety
+
             setTimeout(() => {
                 currentIndex = (currentIndex + 1) % total;
-                loadCard(card1, currentIndex);
+                
+                // Reset cards cleanly
                 card1.style.transition = 'none';
                 card1.style.transform = 'translateX(0)';
+                loadCard(card1, currentIndex);   // ensure collapsed
+                
                 card2.style.transition = 'none';
                 card2.style.transform = 'translateX(100%)';
-            }, 460);
+            }, 480);
         }
 
         function goToPrev() {
             const total = insights.length;
+            if (total <= 1) return;
+
+            card1.classList.remove('expanded');
+            void card1.offsetHeight;   // force reflow
+
             animateCard(card1, window.innerWidth * 1.1, 450);
+
             card2.style.transition = 'none';
             card2.style.transform = `translateX(${-window.innerWidth * 1.1}px)`;
+            
             loadCard(card2, (currentIndex - 1 + total) % total);
 
-            setTimeout(() => animateCard(card2, 0, 450), 10);
+            setTimeout(() => {
+                animateCard(card2, 0, 450);
+            }, 20);
+
             setTimeout(() => {
                 currentIndex = (currentIndex - 1 + total) % total;
-                loadCard(card1, currentIndex);
+                
                 card1.style.transition = 'none';
                 card1.style.transform = 'translateX(0)';
+                loadCard(card1, currentIndex);
+                
                 card2.style.transition = 'none';
                 card2.style.transform = 'translateX(-100%)';
-            }, 460);
+            }, 480);
         }
 
         function startDrag(e) {
+            // Collapse immediately when user begins interaction
+            card1.classList.remove('expanded');
+            void card1.offsetHeight;   // force reflow
+
             isDragging = true;
             startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
             lastX = startX;
@@ -350,13 +379,39 @@
         });
 
         // ====================== MOOD POLLING ======================
+        async function loadInsights() {
+            try {
+                const url = currentMood 
+                    ? `/insights?mood=${encodeURIComponent(currentMood)}` 
+                    : '/insights';
+                
+                const res = await fetch(url);
+                insights = await res.json();
+                
+                if (!Array.isArray(insights) || insights.length === 0) {
+                    insights = [{ short: 'No insights available', long: 'Try listening to some music first.' }];
+                }
+            } catch (e) {
+                insights = [{ short: 'Could not load insights', long: 'Make sure the server is running.' }];
+            }
+        }
+
         async function fetchCurrentMood() {
             try {
                 const res = await fetch('/mood');
                 if (!res.ok) return;
+                
                 const moodData = await res.json();
+                
                 if (moodData.mood && moodData.mood !== currentMood) {
                     currentMood = moodData.mood;
+                    await loadInsights();                    // ← Refresh insights when mood changes
+                    currentIndex = 0;                        // Reset to first card
+                    loadCard(card1, currentIndex);
+                    loadCard(card2, (currentIndex + 1) % insights.length);
+                    card2.style.transform = 'translateX(100%)';
+                    
+                    // Optional: also update the preload card
                     preloadNextMood(moodData);
                 }
             } catch (err) {
